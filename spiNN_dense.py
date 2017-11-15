@@ -1,56 +1,140 @@
 import pyNN.spiNNaker as sim
 import pyNN.utility.plotting as plot
 import matplotlib.pyplot as plt
+import misc
+import time
+import numpy as np
+import os
 
+path = './model/dvs36_evtacc_D16_B0_FLAT_posW_10E/'
+#path = './connections/'
+p1 = path + '01Dense_16'
+p2 = path + '02Dense_4'
 
-#path = './model/dvs36_D16_B0_30E/'
-path = './connections/'
-p1 = path + '00Dense_16'
-p2 = path + '01Dense_4'
+NR = 1296
 
+cellparams = {'v_thresh': 1,
+                  'v_reset': 0,
+                  'v_rest': 0,
+                  'e_rev_E': 10,
+                  'e_rev_I': -10,
+                  'i_offset': 0,
+                  'cm': 0.09,
+                  'tau_m': 1000,
+                  'tau_refrac': 0,
+                  'tau_syn_E': 0.01,
+                  'tau_syn_I': 0.01}
+
+filepath =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_1034_R.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_2194_R.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_0_N.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
+
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath)
 
 sim.setup(timestep=1.0)
 
-spike_times = [[i] for i in range(1296)]
-input = sim.Population(1296, sim.SpikeSourceArray(spike_times=spike_times), label="0_spikes")
-pop_1 = sim.Population(1296, sim.IF_curr_exp(), label="1_input")
-pop_2 = sim.Population(16, sim.IF_curr_exp(), label="2_hidden")
-pop_3 = sim.Population(4, sim.IF_curr_exp(), label="3_softmax")
+#first = [i for i in range(1000)]
+#spike_times = [[i] for i in range(NR)]
+#spike_times[0] = first
+input_pop = sim.Population(size=NR, cellclass=sim.SpikeSourceArray(spike_times=spike_times), label="spikes")
+pop_0 = sim.Population(size=NR, cellclass=sim.IF_curr_exp(), label="1_pre_input")
+pop_0.set(v_thresh=0.1)
+pop_1 = sim.Population(size=16, cellclass=sim.IF_curr_exp(), label="1_input")
+pop_1.set(v_thresh=0.1)
+#misc.set_cell_params(pop_1, cellparams)
+pop_2 = sim.Population(size=4, cellclass=sim.IF_curr_exp(), label="2_hidden")
+pop_2.set(v_thresh=0.1)
+#misc.set_cell_params(pop_2, cellparams)
+#pop_2.set(i_offset=s[label]['v_thresh'])
 
-input_proj = sim.Projection(input, pop_1, sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=5, delay=1))
+input_proj = sim.Projection(input_pop, pop_0, sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=3, delay=1))
 
-connector_1 = sim.FromFileConnector(p1)
+#lif_to_lif_output_proj = Projection(ssa, lif_output, FromListConnector(weighted_connections), target="excitatory")
 
-proj_1 = sim.Projection(pop_1, pop_2, connector_1)
-#proj_1 = sim.Projection(pop_1, pop_2, sim.AllToAllConnector())
+connections_1 = misc.read_connections(p1)
+#connector_1 = sim.FromFileConnector(p1)
+connector_1 = sim.FromListConnector(connections_1, column_names=["i", "j", "delay", "weight"])
 
-connector_2 = sim.FromFileConnector(p2)
+proj_1 = sim.Projection(pop_0, pop_1, connector_1)
+#proj_1 = sim.Projection(pop_1, pop_2, sim.AllToAllConnector(),synapse_type=sim.StaticSynapse(weight=5, delay=1))
 
-proj_2 = sim.Projection(pop_2, pop_3, connector_2)
+connections_2 = misc.read_connections(p2)
+#connector_2 = sim.FromFileConnector(p2)
+connector_2 = sim.FromListConnector(connections_2, column_names=["i", "j", "delay", "weight"])
+
+proj_2 = sim.Projection(pop_1, pop_2, connector_2)
 #proj_2 = sim.Projection(pop_2, pop_3, sim.AllToAllConnector())
 
+pop_0.record(["spikes", "v"])
 pop_1.record(["spikes", "v"])
+pop_2.record(["spikes", "v"])
+#pop_3.record(["spikes", "v"])
+
+pops = [pop_0, pop_1, pop_2]
 
 
-simtime = 20
+simtime = 1000
 sim.run(simtime)
 
-neo = pop_1.get_data(variables=["spikes", "v"])
-spikes = neo.segments[0].spiketrains
-print(spikes)
-v = neo.segments[0].filter(name='v')[0]
-print (v)
+neo = []
+spikes = []
+v = []
+for i in range(len(pops)):
+    neo.append(pops[i].get_data(variables=["spikes", "v"]))
+    spikes.append(neo[i].segments[0].spiketrains)
+#print(spikes)
+
+    v.append(neo[i].segments[0].filter(name='v')[0])
+#print (v)
 
 sim.end()
 
+# i = 2
+# plot.Figure(
+#     # plot voltage for first ([0]) neuron
+#     plot.Panel(v[i], ylabel="Membrane potential (mV)",
+#                data_labels=[pops[i].label], yticks=True, xlim=(0, simtime)),
+#     # plot spikes (or in this case spike)
+#     plot.Panel(spikes[i], yticks=True, markersize=5, xlim=(0, simtime)),
+#     title="Simple Example",
+#     annotations="Simulated with {}".format(sim.name())
+# ).save("./results/figure_{}.png".format(i))
+# plt.show()
 
-plot.Figure(
-# plot voltage for first ([0]) neuron
-plot.Panel(v, ylabel="Membrane potential (mV)",
-data_labels=[pop_1.label], yticks=True, xlim=(0, simtime)),
-# plot spikes (or in this case spike)
-plot.Panel(spikes, yticks=True, markersize=5, xlim=(0, simtime)),
-title="Simple Example",
-annotations="Simulated with {}".format(sim.name())
-)
+path = './results/{}/'.format(int(time.time()))
+
+for i in range(len(pops)):
+    plot.Figure(
+    # plot voltage for first ([0]) neuron
+    plot.Panel(v[i], ylabel="Membrane potential (mV)",
+    data_labels=[pops[i].label], yticks=True, xlim=(0, simtime)),
+    # plot spikes (or in this case spike)
+    plot.Panel(spikes[i], yticks=True, markersize=3, xlim=(0, simtime)),
+    title="Simple Example",
+    annotations="Simulated with {}".format(sim.name())
+    ).save(path + 'figure_{}.png'.format(i))
+
 plt.show()
+
+
+np.savez(file='inputspikes', arr_0=spikes[0])
+np.savez(file='pot1', arr_0=v[1])
+np.savez(file='pot2', arr_0=v[2])
+
+output_spikes = spikes[2]
+output_spike_counts = [output_spikes[i].size for i in range(len(output_spikes))]
+prediction = np.argmax(output_spike_counts)
+
+print("PREDICTION: {}".format(prediction))
+
+# for (neuron, spike_times) in enumerate(spikes[0]):
+#     if spike_times == []:
+#         continue
+#     #spiking_neurons = spikes.nonzero()
+#     neuron_vec = np.ones_like(spike_times) * neuron
+#     plt.plot(spike_times, neuron_vec, '.')
+#
+# plt.savefig(os.path.join(path, 'input_spikes'), bbox_inches='tight')

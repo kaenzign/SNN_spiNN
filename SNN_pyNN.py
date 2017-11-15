@@ -3,11 +3,14 @@ from six.moves import cPickle
 import warnings
 import pyNN.spiNNaker as sim
 #from pyNN.utility import get_simulator, init_logging, normalized_filename
-#import pyNN.utility.plotting as plot
+import pyNN.utility.plotting as plot
 import matplotlib.pyplot as plt
+
 
 MODEL = 'weights.02-0.49_brian'
 PATH = './model/dv36_evtacc_D64_B0_30E'
+# MODEL = 'weights.29-0.36_brian'
+# PATH = './model/dvs36_evtacc_avgpool_B0_30E'
 
 
 def load_assembly(path, filename):
@@ -78,6 +81,7 @@ def read_weights(filepath):
 
 
 
+
 # def load(path, filename):
 #
 #     layers = load_assembly(path, filename)
@@ -89,26 +93,52 @@ def read_weights(filepath):
 #         connector = sim.FromListConnector(connections, column_names=["i", "j", "weight", "delay"])
 #         proj_1 = sim.Projection(layers[i], layers[i+1], connector)
 
-def load(path, filename):
+def load(path, filename, input_layer):
 
     layers = load_assembly(path, filename)
-    for i in range(len(layers ) -1):
-        filepath = os.path.join(path, layers[ i +1].label)
+    projections = []
+    for i in range(len(layers )-1):
+        filepath = os.path.join(path, layers[i+1].label)
         assert os.path.isfile(filepath), \
             "Connections were not found at specified location."
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             warnings.warn('deprecated', UserWarning)
-            sim.Projection(layers[i], layers[ i +1],
-                                sim.FromFileConnector(filepath))
-
+            if i==0:
+                projections.append(sim.Projection(input_layer, layers[i+1], sim.FromFileConnector(filepath)))
+                #projections.append(sim.Projection(input_layer, layers[i+1], sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=5, delay=1)))
+            else:
+                projections.append(sim.Projection(layers[i], layers[i+1], sim.FromFileConnector(filepath)))
+    return layers, projections
 
 
 sim.setup(timestep=1.0)
-#sim.set_number_of_neurons_per_core(sim.IF_curr_exp, 100)
-load(PATH, MODEL)
+spike_times = [[i] for i in range(1296)]
+input_pop = sim.Population(1296, sim.SpikeSourceArray(spike_times=spike_times), label="InputLayer")
 
-simtime = 10
+#sim.set_number_of_neurons_per_core(sim.IF_curr_exp, 100)
+layers, projections = load(path=PATH, filename=MODEL, input_layer=input_pop)
+
+layers[1].record(["spikes", "v"])
+
+simtime = 20
 sim.run(simtime)
 
+neo = layers[1].get_data(variables=["spikes", "v"])
+spikes = neo.segments[0].spiketrains
+print(spikes)
+v = neo.segments[0].filter(name='v')[0]
+print (v)
+
 sim.end()
+
+plot.Figure(
+# plot voltage for first ([0]) neuron
+plot.Panel(v, ylabel="Membrane potential (mV)",
+data_labels=[layers[1].label], yticks=True, xlim=(0, simtime)),
+# plot spikes (or in this case spike)
+plot.Panel(spikes, yticks=True, markersize=5, xlim=(0, simtime)),
+title="Simple Example",
+annotations="Simulated with {}".format(sim.name())
+)
+plt.show()
