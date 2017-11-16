@@ -30,9 +30,10 @@ filepath =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_1034_R.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_2194_R.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_0_N.aedat'
-filepath =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
+filepath1 =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
+filepath2 =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
 
-spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath)
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath1)
 
 sim.setup(timestep=1.0)
 
@@ -52,21 +53,17 @@ pop_2.set(v_thresh=0.1)
 
 input_proj = sim.Projection(input_pop, pop_0, sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=3, delay=1))
 
-#lif_to_lif_output_proj = Projection(ssa, lif_output, FromListConnector(weighted_connections), target="excitatory")
 
 connections_1 = misc.read_connections(p1)
 #connector_1 = sim.FromFileConnector(p1)
 connector_1 = sim.FromListConnector(connections_1, column_names=["i", "j", "delay", "weight"])
-
 proj_1 = sim.Projection(pop_0, pop_1, connector_1)
-#proj_1 = sim.Projection(pop_1, pop_2, sim.AllToAllConnector(),synapse_type=sim.StaticSynapse(weight=5, delay=1))
 
 connections_2 = misc.read_connections(p2)
 #connector_2 = sim.FromFileConnector(p2)
 connector_2 = sim.FromListConnector(connections_2, column_names=["i", "j", "delay", "weight"])
-
 proj_2 = sim.Projection(pop_1, pop_2, connector_2)
-#proj_2 = sim.Projection(pop_2, pop_3, sim.AllToAllConnector())
+
 
 pop_0.record(["spikes", "v"])
 pop_1.record(["spikes", "v"])
@@ -76,7 +73,7 @@ pop_2.record(["spikes", "v"])
 pops = [pop_0, pop_1, pop_2]
 
 
-simtime = 1000
+simtime = 100
 sim.run(simtime)
 
 neo = []
@@ -90,19 +87,16 @@ for i in range(len(pops)):
     v.append(neo[i].segments[0].filter(name='v')[0])
 #print (v)
 
+
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath2)
+
+sim.reset()
+print('SECOND RUN')
+simtime = 100
+sim.run(simtime)
+
 sim.end()
 
-# i = 2
-# plot.Figure(
-#     # plot voltage for first ([0]) neuron
-#     plot.Panel(v[i], ylabel="Membrane potential (mV)",
-#                data_labels=[pops[i].label], yticks=True, xlim=(0, simtime)),
-#     # plot spikes (or in this case spike)
-#     plot.Panel(spikes[i], yticks=True, markersize=5, xlim=(0, simtime)),
-#     title="Simple Example",
-#     annotations="Simulated with {}".format(sim.name())
-# ).save("./results/figure_{}.png".format(i))
-# plt.show()
 
 path = './results/{}/'.format(int(time.time()))
 
@@ -130,11 +124,4 @@ prediction = np.argmax(output_spike_counts)
 
 print("PREDICTION: {}".format(prediction))
 
-# for (neuron, spike_times) in enumerate(spikes[0]):
-#     if spike_times == []:
-#         continue
-#     #spiking_neurons = spikes.nonzero()
-#     neuron_vec = np.ones_like(spike_times) * neuron
-#     plt.plot(spike_times, neuron_vec, '.')
-#
-# plt.savefig(os.path.join(path, 'input_spikes'), bbox_inches='tight')
+

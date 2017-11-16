@@ -1,4 +1,6 @@
 from PyAedatTools.ImportAedat import ImportAedat
+import  numpy as np
+import os
 
 def override_weights(filepath, w_last = True):
     with open(filepath) as f:
@@ -71,6 +73,80 @@ def set_cell_params(pop, cellparams):
     pop.set(tau_refrac=0)
     pop.set(tau_syn_E=0.01)
     pop.set(tau_syn_I=0.01)
+
+def run_testset(sim, simtime, filepaths, labels, in_pop, out_pop):
+    nr_runs = len(filepaths)
+
+    neos = []
+    for i, path in enumerate(filepaths):
+        print('SAMPLE {}/{}: {}'.format(i, nr_runs, path))
+
+        spike_times, _ = extract_spiketimes_from_aedat(path)
+        in_pop.set(spike_times=spike_times)
+
+        sim.run(simtime)
+
+        if i<nr_runs-1:
+            neos.append(out_pop.get_data(variables=["spikes"]))
+            sim.reset()
+
+
+    neos.append(out_pop.get_data(variables=["spikes"]))
+    sim.end()
+
+    correct_class_predictions = [0, 0, 0, 0]
+    nr_class_samples = [0, 0, 0, 0]
+    i = 0
+    for neo, label in zip(neos, labels):
+
+        output_spike_counts = [len(spikes) for spikes in neo.segments[i].spiketrains]
+        prediction = np.argmax(output_spike_counts)
+        if prediction == label:
+            correct_class_predictions[label] += 1
+        nr_class_samples[label] += 1
+
+        print("PREDICTION/GND_TRUTH {}: {}/{}".format(i, prediction, label))
+        i += 1
+    correct_predictions = np.sum(correct_class_predictions)
+    print("ACCURACY: {}".format(float(correct_predictions)/i))
+    class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
+    print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
+
+
+def get_sample_filepaths_and_labels(dataset_path):
+    # Count the number of samples and classes
+    classes = [subdir for subdir in sorted(os.listdir(dataset_path))
+               if os.path.isdir(os.path.join(dataset_path, subdir))]
+
+    label_dict = label_dict = {"N": "0", "L": "1", "C": "2", "R": "3",}
+    num_classes = len(label_dict)
+    assert num_classes == len(classes), \
+        "The number of classes provided by label_dict {} does not match " \
+        "the number of subdirectories found in dataset_path {}.".format(
+            label_dict, dataset_path)
+
+    filenames = []
+    labels = []
+    num_samples = 0
+    for subdir in classes:
+        for fname in sorted(os.listdir(os.path.join(dataset_path, subdir))):
+            is_valid = False
+            for extension in {'aedat'}:
+                if fname.lower().endswith('.' + extension):
+                    is_valid = True
+                    break
+            if is_valid:
+                labels.append(label_dict[subdir])
+                filenames.append(os.path.join(dataset_path, subdir, fname))
+                num_samples += 1
+    labels = np.array(labels, 'int32')
+    print("Found {} samples belonging to {} classes.".format(
+        num_samples, num_classes))
+    return filenames, labels
+
+
+
+
     
 
 
