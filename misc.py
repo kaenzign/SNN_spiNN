@@ -29,7 +29,7 @@ def read_connections(filepath):
                 connections.append(line)
     return connections
 
-def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36)):
+def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36), no_gaps=False):
     # Create a dict with which to pass in the input parameters.
     aedat = {}
     aedat['importParams'] = {}
@@ -50,13 +50,23 @@ def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36
         if t > max_time:
             max_time = t
 
+    last_t = float('Inf')
+    t_step = 0
     for t, x, y in zip(aedat_data['data']['polarity']['timeStamp'], aedat['data']['polarity']['x'],
                           aedat_data['data']['polarity']['y']):
         x = int(x * scale[0])
         y = int(y * scale[1])
         x = 36-1-x
         y = 36-1-y
-        spike_times[x * 36 + y].append(t - min_time)  # reshape: [36,36] -> [1296], subtract min_time s.t. time values start at 0
+
+        if no_gaps:
+            spike_times[x * 36 + y].append(t_step)
+            if t > last_t:
+                t_step += 1
+            last_t = t
+        else:
+            spike_times[x * 36 + y].append(t - min_time)  # reshape: [36,36] -> [1296], subtract min_time s.t. time values start at 0
+
 
     return spike_times, max_time-min_time
 
@@ -74,14 +84,14 @@ def set_cell_params(pop, cellparams):
     pop.set(tau_syn_E=0.01)
     pop.set(tau_syn_I=0.01)
 
-def run_testset(sim, simtime, filepaths, labels, in_pop, out_pop):
+def run_testset(sim, simtime, filepaths, labels, in_pop, out_pop, no_gaps):
     nr_runs = len(filepaths)
 
     neos = []
     for i, path in enumerate(filepaths):
         print('SAMPLE {}/{}: {}'.format(i, nr_runs, path))
 
-        spike_times, _ = extract_spiketimes_from_aedat(path)
+        spike_times, _ = extract_spiketimes_from_aedat(path, no_gaps=no_gaps)
         in_pop.set(spike_times=spike_times)
 
         sim.run(simtime)

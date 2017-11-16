@@ -30,10 +30,10 @@ filepath =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_1034_R.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_2194_R.aedat'
 filepath =  './data/aedat/' + 'rec_10_sample_0_N.aedat'
-filepath1 =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
-filepath2 =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
 
-spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath1)
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath, no_gaps=True)
 
 sim.setup(timestep=1.0)
 
@@ -73,7 +73,7 @@ pop_2.record(["spikes", "v"])
 pops = [pop_0, pop_1, pop_2]
 
 
-simtime = 100
+simtime = 1000
 sim.run(simtime)
 
 neo = []
@@ -87,13 +87,6 @@ for i in range(len(pops)):
     v.append(neo[i].segments[0].filter(name='v')[0])
 #print (v)
 
-
-spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath2)
-
-sim.reset()
-print('SECOND RUN')
-simtime = 100
-sim.run(simtime)
 
 sim.end()
 
