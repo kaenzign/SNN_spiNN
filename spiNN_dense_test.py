@@ -75,7 +75,9 @@ else:
     connector_2 = sim.FromListConnector(connections_2, column_names=["i", "j", "delay", "weight"])
     proj_2 = sim.Projection(pop_1, pop_2, connector_2)
 
-pop_2.record(["spikes"])
+pop_1.record(["spikes", "v"])
+pop_2.record(["spikes", "v"])
+#pop_2.record(["spikes"])
 pops = [pop_1, pop_2]
 #misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
 

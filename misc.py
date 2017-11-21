@@ -1,4 +1,7 @@
 from PyAedatTools.ImportAedat import ImportAedat
+import pyNN.utility.plotting as plot
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import  numpy as np
 import os
 import time
@@ -90,7 +93,7 @@ def generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, inp_
         starttime += duration + pause_between_samples
         duration += duration
         starttimes.append(starttime)
-    return all_sample_spikes, starttimes, duration
+    return all_sample_spikes, starttimes[:-1], duration
 
 def set_cell_params(pop, cellparams):
     pop.set(v_thresh=1)
@@ -191,6 +194,19 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
         spikes.append(neo[i].segments[0].spiketrains)
         v.append(neo[i].segments[0].filter(name='v')[0])
     sim.end()
+    path = './results/{}/'.format(int(time.time()))
+
+    for i in range(len(pops)):
+        plot.Figure(
+            # plot voltage for first ([0]) neuron
+            plot.Panel(v[i], ylabel="Membrane potential (mV)",
+                       data_labels=[pops[i].label], yticks=True, xlim=(0, duration)),
+            # plot spikes (or in this case spike)
+            plot.Panel(spikes[i], yticks=True, markersize=3, xlim=(0, duration)),
+            title="Simple Example",
+            annotations="Simulated with {}".format(sim.name())
+        ).save(path + 'figure_{}.png'.format(i))
+
 
     correct_class_predictions = [0, 0, 0, 0]
     nr_class_samples = [0, 0, 0, 0]
