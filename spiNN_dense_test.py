@@ -26,8 +26,8 @@ filepath3 =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
 filepath4 =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 filepath4 =  './data/aedat/' + 'test_dvs_6.aedat'
 
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
 # filepaths = [filepath1, filepath2, filepath3, filepath4]
 # labels = [0,2,1,1]
 # filepaths = [filepath4]
@@ -79,6 +79,16 @@ pop_1.record(["spikes", "v"])
 pop_2.record(["spikes", "v"])
 #pop_2.record(["spikes"])
 pops = [pop_1, pop_2]
-#misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
 
-misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 1000)
+# start = time.time()
+# misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
+# end = time.time()
+# print(end - start)
+# 168.983999968 seconds
+
+start = time.time()
+misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100)
+end = time.time()
+print(end - start)
+# 50.5559999943 seconds
+

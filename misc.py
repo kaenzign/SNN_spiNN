@@ -40,7 +40,7 @@ def read_connections(filepath):
                     exitatory_connections.append(line)
     return inhibitory_connections, exitatory_connections
 
-def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36), no_gaps=False, start_time=10):
+def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36), no_gaps=False, start_time=0, simtime=float('Inf')):
     # Create a dict with which to pass in the input parameters.
     aedat = {}
     aedat['importParams'] = {}
@@ -75,25 +75,33 @@ def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36
             if t > last_t:
                 t_step += 1
             last_t = t
+            if t_step >= simtime:
+                break
         else:
             spike_times[x * 36 + y].append(t - min_time + start_time)  # reshape: [36,36] -> [1296], subtract min_time s.t. time values start at 0
+            if (t - min_time) >= simtime:
+                break
 
+        if simtime < max_time-min_time:
+            duration = simtime
+        else:
+            duration = max_time - min_time
+    return spike_times, duration
 
-    return spike_times, max_time-min_time
-
-def generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, inp_dim):
+def generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, inp_dim, sim_time_per_sample):
     starttime = 0
     all_sample_spikes = [[] for i in range(inp_dim)]
     starttimes = [starttime]
-    duration = 0
+    durations = []
     for i, path in enumerate(filepaths):
-        spike_times, duration = extract_spiketimes_from_aedat(path, no_gaps=no_gaps, start_time=starttime)
+        spike_times, duration = extract_spiketimes_from_aedat(path, no_gaps=no_gaps, start_time=starttime, simtime=sim_time_per_sample)
         for neuron, times in enumerate(spike_times):
             all_sample_spikes[neuron] += times
         starttime += duration + pause_between_samples
-        duration += duration
         starttimes.append(starttime)
-    return all_sample_spikes, starttimes[:-1], duration
+        durations.append(duration)
+    tot_simtime = starttimes[-1] - pause_between_samples
+    return all_sample_spikes, starttimes[:-1], tot_simtime, durations
 
 def set_cell_params(pop, cellparams):
     pop.set(v_thresh=1)
@@ -180,11 +188,11 @@ def run_testset(sim, simtime, filepaths, labels, in_pop, out_pop, no_gaps):
 def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops, no_gaps, pause_between_samples):
     nr_samples = len(filepaths)
 
-    input_spikes, starttimes, duration = generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, in_pop.size)
+    input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, in_pop.size, simtime)
 
     in_pop.set(spike_times=input_spikes)
 
-    sim.run(duration)
+    sim.run(tot_simtime)
     #neo = out_pop.get_data(variables=
     neo = []
     spikes = []
@@ -200,17 +208,49 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
         plot.Figure(
             # plot voltage for first ([0]) neuron
             plot.Panel(v[i], ylabel="Membrane potential (mV)",
-                       data_labels=[pops[i].label], yticks=True, xlim=(0, duration)),
+                       data_labels=[pops[i].label], yticks=True, xlim=(0, tot_simtime)),
             # plot spikes (or in this case spike)
-            plot.Panel(spikes[i], yticks=True, markersize=3, xlim=(0, duration)),
+            plot.Panel(spikes[i], yticks=True, markersize=3, xlim=(0, tot_simtime)),
             title="Simple Example",
             annotations="Simulated with {}".format(sim.name())
         ).save(path + 'figure_{}.png'.format(i))
 
+    np.savez(file='inputspikes', arr_0=spikes[0])
+    np.savez(file='pot1', arr_0=v[0])
+    np.savez(file='pot2', arr_0=v[1])
+
 
     correct_class_predictions = [0, 0, 0, 0]
     nr_class_samples = [0, 0, 0, 0]
-    i = 0
+
+    start_index = [0, 0, 0, 0]
+    output = []
+    for i in range(nr_samples):
+        output_spike_counts = [0, 0, 0, 0]
+        for out_neuron, spiketrain in enumerate(neo[1].segments[0].spiketrains):
+            if start_index[out_neuron] >= spiketrain.size-1:
+                continue
+            for k, spiketime in enumerate(spiketrain[start_index[out_neuron]:]):
+                next_start_index = k + start_index[out_neuron]
+                if spiketime < starttimes[i] + simtime:
+                    output_spike_counts[out_neuron] += 1
+                else:
+                    break
+            start_index[out_neuron] = next_start_index
+        output.append(output_spike_counts)
+
+        prediction = np.argmax(output_spike_counts)
+        label = labels[i]
+        if prediction == label:
+            correct_class_predictions[label] += 1
+        nr_class_samples[label] += 1
+
+    correct_predictions = np.sum(correct_class_predictions)
+    print("ACCURACY: {}".format(float(correct_predictions)/nr_samples))
+    class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
+    print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
+
+
     # for neo, label in zip(neos, labels):
     #
     #     output_spike_counts = [len(spikes) for spikes in neo.segments[i].spiketrains]
