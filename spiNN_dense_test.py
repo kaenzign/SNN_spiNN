@@ -9,6 +9,7 @@ import os
 
 
 SIMTIME = 1000
+BATCH_SIZE = 10
 INHIBITORY = False
 output_spikes = []
 
@@ -27,6 +28,7 @@ filepath4 =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 filepath4 =  './data/aedat/' + 'test_dvs_6.aedat'
 
 filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
 # filepaths = [filepath1, filepath2, filepath3, filepath4]
 # labels = [0,2,1,1]
@@ -85,10 +87,16 @@ pops = [pop_1, pop_2]
 # end = time.time()
 # print(end - start)
 # 168.983999968 seconds
+#
+# start = time.time()
+#misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100)
+# end = time.time()
+# print(end - start)
+# 50.5559999943 seconds
+# Application started - waiting 439.985 seconds for it to stop (balanced_100)
+
 
 start = time.time()
-misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100)
+misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, True, 100)
 end = time.time()
 print(end - start)
-# 50.5559999943 seconds
-

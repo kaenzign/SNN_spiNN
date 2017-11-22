@@ -224,10 +224,9 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
     nr_class_samples = [0, 0, 0, 0]
 
     start_index = [0, 0, 0, 0]
-    output = []
     for i in range(nr_samples):
         output_spike_counts = [0, 0, 0, 0]
-        for out_neuron, spiketrain in enumerate(neo[1].segments[0].spiketrains):
+        for out_neuron, spiketrain in enumerate(neo[len(pops)-1].segments[0].spiketrains):
             if start_index[out_neuron] >= spiketrain.size-1:
                 continue
             for k, spiketime in enumerate(spiketrain[start_index[out_neuron]:]):
@@ -237,7 +236,6 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
                 else:
                     break
             start_index[out_neuron] = next_start_index
-        output.append(output_spike_counts)
 
         prediction = np.argmax(output_spike_counts)
         label = labels[i]
@@ -246,29 +244,71 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
         nr_class_samples[label] += 1
 
     correct_predictions = np.sum(correct_class_predictions)
+    print('NR. OF SAMPLES: {}'.format(nr_samples))
     print("ACCURACY: {}".format(float(correct_predictions)/nr_samples))
     class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
     print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
 
 
-    # for neo, label in zip(neos, labels):
-    #
-    #     output_spike_counts = [len(spikes) for spikes in neo.segments[i].spiketrains]
-    #     prediction = np.argmax(output_spike_counts)
-    #     if prediction == label:
-    #         correct_class_predictions[label] += 1
-    #     nr_class_samples[label] += 1
-    #
-    #     print("PREDICTION/GND_TRUTH {}: {}/{}".format(i, prediction, label))
-    #     i += 1
-    # correct_predictions = np.sum(correct_class_predictions)
-    # print("ACCURACY: {}".format(float(correct_predictions)/i))
-    # class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
-    # print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
+def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size, in_pop, out_pop, pops, no_gaps, pause_between_samples):
+    tot_nr_samples = len(filepaths)
+    nr_batches = int(len(filepaths) / float(batch_size)) + 1
+    batch_nr_samples = [batch_size for i in range(nr_batches-1)]
+    batch_nr_samples.append(tot_nr_samples % batch_size)
+    batch_starttimes = []
+    batch_labels = []
+    neos = []
+    for i in range(nr_batches):
+        end_idx = (i + 1) * batch_size
+        # last smaller batch
+        if end_idx >= len(filepaths):
+            batch_paths = filepaths[i * batch_size:]
+            batch_labels.append(labels[i * batch_size:])
+        else:
+            batch_paths = filepaths[i * batch_size:end_idx]
+            batch_labels.append(labels[i * batch_size:end_idx])
+
+        input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(batch_paths, no_gaps, pause_between_samples, in_pop.size, simtime)
+        batch_starttimes.append(starttimes)
+
+        in_pop.set(spike_times=input_spikes)
+
+        sim.run(tot_simtime)
+        if i < nr_batches-1:
+            neos.append(out_pop.get_data(variables=["spikes"]))
+            sim.reset()
+
+    neos.append(out_pop.get_data(variables=["spikes"]))
+    sim.end()
 
 
+    nr_class_samples = [0, 0, 0, 0]
+    correct_class_predictions = [0, 0, 0, 0]
 
+    for batch in range(nr_batches):
 
-    
+        start_index = [0, 0, 0, 0]
+        for i in range(batch_nr_samples[batch]):
+            output_spike_counts = [0, 0, 0, 0]
+            for out_neuron, spiketrain in enumerate(neos[batch].segments[batch].spiketrains):
+                if start_index[out_neuron] >= spiketrain.size-1:
+                    continue
+                for k, spiketime in enumerate(spiketrain[start_index[out_neuron]:]):
+                    next_start_index = k + start_index[out_neuron]
+                    if spiketime < batch_starttimes[batch][i] + simtime:
+                        output_spike_counts[out_neuron] += 1
+                    else:
+                        break
+                start_index[out_neuron] = next_start_index
 
+            prediction = np.argmax(output_spike_counts)
+            label = batch_labels[batch][i]
+            if prediction == label:
+                correct_class_predictions[label] += 1
+            nr_class_samples[label] += 1
 
+    correct_predictions = np.sum(correct_class_predictions)
+    print('NR. OF SAMPLES: {}'.format(tot_nr_samples))
+    print("ACCURACY: {}".format(float(correct_predictions)/tot_nr_samples))
+    class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
+    print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
