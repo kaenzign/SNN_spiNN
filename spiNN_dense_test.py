@@ -9,7 +9,8 @@ import os
 
 
 SIMTIME = 1000
-BATCH_SIZE = 10
+BATCH_SIZE = 48000
+MEASUREMENTS = False
 INHIBITORY = False
 output_spikes = []
 
@@ -27,8 +28,8 @@ filepath3 =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
 filepath4 =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 filepath4 =  './data/aedat/' + 'test_dvs_6.aedat'
 
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
 # filepaths = [filepath1, filepath2, filepath3, filepath4]
 # labels = [0,2,1,1]
@@ -77,10 +78,13 @@ else:
     connector_2 = sim.FromListConnector(connections_2, column_names=["i", "j", "delay", "weight"])
     proj_2 = sim.Projection(pop_1, pop_2, connector_2)
 
-pop_1.record(["spikes", "v"])
-pop_2.record(["spikes", "v"])
-#pop_2.record(["spikes"])
-pops = [pop_1, pop_2]
+if MEASUREMENTS:
+    pop_1.record(["spikes", "v"])
+    pop_2.record(["spikes", "v"])
+    pops = [pop_1, pop_2]
+else:
+    pop_2.record(["spikes"])
+    pops = [pop_2]
 
 # start = time.time()
 # misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
@@ -100,3 +104,8 @@ start = time.time()
 misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, True, 100)
 end = time.time()
 print(end - start)
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.675
+# CLASS ACCURACIES N L C R: 0.93 0.66 0.62 0.49
+# 732.963000059 (batchsize=??, vpot measurement etc)
+

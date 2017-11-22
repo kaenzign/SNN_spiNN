@@ -259,6 +259,7 @@ def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size,
     batch_labels = []
     neos = []
     for i in range(nr_batches):
+        print('RUNNING BATCH {}/{}'.format(i+1,nr_batches))
         end_idx = (i + 1) * batch_size
         # last smaller batch
         if end_idx >= len(filepaths):
