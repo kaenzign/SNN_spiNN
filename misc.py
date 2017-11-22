@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import  numpy as np
 import os
 import time
+import math
 
 
 
@@ -252,7 +253,7 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
 
 def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size, in_pop, out_pop, pops, no_gaps, pause_between_samples):
     tot_nr_samples = len(filepaths)
-    nr_batches = int(len(filepaths) / float(batch_size)) + 1
+    nr_batches = int(math.ceil(len(filepaths) / float(batch_size)))
     batch_nr_samples = [batch_size for i in range(nr_batches-1)]
     batch_nr_samples.append(tot_nr_samples % batch_size)
     batch_starttimes = []

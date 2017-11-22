@@ -9,9 +9,9 @@ import os
 
 
 SIMTIME = 1000
-BATCH_SIZE = 48000
+BATCH_SIZE = 20
 MEASUREMENTS = False
-INHIBITORY = False
+INHIBITORY = True
 output_spikes = []
 
 if INHIBITORY:
@@ -22,23 +22,11 @@ p1 = path + '01Dense_16'
 p2 = path + '02Dense_4'
 
 
-filepath1 =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
-filepath2 =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
-filepath3 =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
-filepath4 =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
-filepath4 =  './data/aedat/' + 'test_dvs_6.aedat'
-
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
-# filepaths = [filepath1, filepath2, filepath3, filepath4]
-# labels = [0,2,1,1]
-# filepaths = [filepath4]
-# labels = [0]
 
 sim.setup(timestep=1.0)
-
-spike_times, _ = misc.extract_spiketimes_from_aedat(filepath1)
 
 input_pop = sim.Population(size=1296, cellclass=sim.SpikeSourceArray(spike_times=[]), label="spikes")
 pop_1 = sim.Population(size=16, cellclass=sim.IF_curr_exp(), label="1_input")
@@ -107,5 +95,13 @@ print(end - start)
 # NR. OF SAMPLES: 400
 # ACCURACY: 0.675
 # CLASS ACCURACIES N L C R: 0.93 0.66 0.62 0.49
-# 732.963000059 (batchsize=??, vpot measurement etc)
+# 732.963000059 (batchsize=30, vpot measurement etc)
 
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.635
+# CLASS ACCURACIES N L C R: 0.97 0.66 0.61 0.3
+# 747.660000086 (batchsize=100, only output spikes measured..)
+# 2017-11-22 15:34:33 WARNING: The reinjector on 0, 0 has detected that 6 packets were dumped from a core failing to take
+# the packet. This often occurs when the executable has crashed or has not been given a multicast packet callback. It can
+# also result from the core taking too long to process each packet. These packets were reinjected and so this number is
+# likely a overestimate.
