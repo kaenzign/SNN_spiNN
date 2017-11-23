@@ -6,10 +6,10 @@ import time
 import numpy as np
 import os
 
-INHIBITORY = True
+INHIBITORY = False
 SIMTIME = 250
 path = './model/dvs36_evtacc_D16_B0_FLAT_posW_10E/'
-path = './model/dvs36_evtaccCOR_D16_B0_FLAT_30E/'
+#path = './model/dvs36_evtaccCOR_D16_B0_FLAT_30E/'
 #path = './connections/'
 p1 = path + '01Dense_16'
 p2 = path + '02Dense_4'
@@ -28,16 +28,16 @@ cellparams = {'v_thresh': 1,
                   'tau_syn_E': 0.01,
                   'tau_syn_I': 0.01}
 
-filepath =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
+#filepath =  './data/aedat/' + 'rec_10_sample_3112_L.aedat'
 # filepath =  './data/aedat/' + 'rec_10_sample_3248_L.aedat'
 # filepath =  './data/aedat/' + 'rec_10_sample_1034_R.aedat'
 # filepath =  './data/aedat/' + 'rec_10_sample_2194_R.aedat'
 # filepath =  './data/aedat/' + 'rec_10_sample_0_N.aedat'
 # filepath =  './data/aedat/' + 'rec_10_sample_2775_N.aedat'
-# filepath =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
+filepath =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
 #filepath =  './data/aedat/' + 'test_dvs_6.aedat'
 
-spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath, no_gaps=True)
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath, no_gaps=True, eventframe_width=10)
 
 sim.setup(timestep=1.0)
 

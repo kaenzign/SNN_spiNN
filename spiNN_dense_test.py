@@ -9,9 +9,10 @@ import os
 
 
 SIMTIME = 1000
-BATCH_SIZE = 20
+BATCH_SIZE = 30
+EVENTFRAME_WIDTH = None
 MEASUREMENTS = False
-INHIBITORY = True
+INHIBITORY = False
 output_spikes = []
 
 if INHIBITORY:
@@ -22,9 +23,10 @@ p1 = path + '01Dense_16'
 p2 = path + '02Dense_4'
 
 
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/one/')
 
 sim.setup(timestep=1.0)
 
@@ -73,15 +75,19 @@ if MEASUREMENTS:
 else:
     pop_2.record(["spikes"])
     pops = [pop_2]
-
+#
 # start = time.time()
 # misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
 # end = time.time()
 # print(end - start)
-# 168.983999968 seconds
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.6175
+# CLASS ACCURACIES N L C R: 0.92 0.6 0.54 0.41
+# 2935.13000011 (batch 100)
+
 #
 # start = time.time()
-#misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100)
+# misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100, 10)
 # end = time.time()
 # print(end - start)
 # 50.5559999943 seconds
@@ -89,7 +95,7 @@ else:
 
 
 start = time.time()
-misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, True, 100)
+misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, True, 100, EVENTFRAME_WIDTH)
 end = time.time()
 print(end - start)
 # NR. OF SAMPLES: 400
@@ -105,3 +111,23 @@ print(end - start)
 # the packet. This often occurs when the executable has crashed or has not been given a multicast packet callback. It can
 # also result from the core taking too long to process each packet. These packets were reinjected and so this number is
 # likely a overestimate.
+#
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.55
+# CLASS ACCURACIES N L C R: 0.93 0.59 0.54 0.28
+# 234.315000057 (batch 50, simtime 250)
+#
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.515
+# CLASS ACCURACIES N L C R: 0.93 0.59 0.54 nan
+# 213.197000027 (batch 100, simtime 250)
+
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.54
+# CLASS ACCURACIES N L C R: 0.99 0.43 0.46 0.28
+# 289.74000001 (batch 30, evtframe_width=10, simtime=250)
+#
+# NR. OF SAMPLES: 400
+# ACCURACY: 0.5525
+# CLASS ACCURACIES N L C R: 1.0 0.44 0.48 0.29
+# 687.986999989 (batch 30, evtframe_width=10, simtime=1000)

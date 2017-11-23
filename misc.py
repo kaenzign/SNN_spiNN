@@ -41,7 +41,7 @@ def read_connections(filepath):
                     exitatory_connections.append(line)
     return inhibitory_connections, exitatory_connections
 
-def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36), no_gaps=False, start_time=0, simtime=float('Inf')):
+def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36,36), no_gaps=False, start_time=0, simtime=float('Inf'), eventframe_width=None):
     # Create a dict with which to pass in the input parameters.
     aedat = {}
     aedat['importParams'] = {}
@@ -63,23 +63,32 @@ def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36
             max_time = t
 
     last_t = float('Inf')
+    first_t_of_frame = min_time
     t_step = 0
     for t, x, y in zip(aedat_data['data']['polarity']['timeStamp'], aedat['data']['polarity']['x'],
                           aedat_data['data']['polarity']['y']):
         x = int(x * scale[0])
         y = int(y * scale[1])
-        x = 36-1-x
-        y = 36-1-y
+        x = target_dim[0]-1-x
+        y = target_dim[1]-1-y
 
         if no_gaps:
-            spike_times[x * 36 + y].append(t_step + start_time)
-            if t > last_t:
-                t_step += 1
-            last_t = t
+            if eventframe_width == None:
+                spike_times[x * target_dim[1] + y].append(t_step + start_time)
+                if t > last_t:
+                    t_step += 1
+                last_t = t
+            else:
+                if t_step + start_time not in spike_times[x * target_dim[1] + y]:
+                    spike_times[x * 36 + y].append(t_step + start_time)
+                if t - first_t_of_frame >= eventframe_width:
+                    first_t_of_frame = t
+                    t_step += 1
+
             if t_step >= simtime:
                 break
         else:
-            spike_times[x * 36 + y].append(t - min_time + start_time)  # reshape: [36,36] -> [1296], subtract min_time s.t. time values start at 0
+            spike_times[x * target_dim[1] + y].append(t - min_time + start_time)  # reshape: [36,36] -> [1296], subtract min_time s.t. time values start at 0
             if (t - min_time) >= simtime:
                 break
 
@@ -89,13 +98,13 @@ def extract_spiketimes_from_aedat(filepath, aedadt_dim=(240,180), target_dim=(36
             duration = max_time - min_time
     return spike_times, duration
 
-def generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, inp_dim, sim_time_per_sample):
+def generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, inp_dim, sim_time_per_sample, eventframe_width):
     starttime = 0
     all_sample_spikes = [[] for i in range(inp_dim)]
     starttimes = [starttime]
     durations = []
     for i, path in enumerate(filepaths):
-        spike_times, duration = extract_spiketimes_from_aedat(path, no_gaps=no_gaps, start_time=starttime, simtime=sim_time_per_sample)
+        spike_times, duration = extract_spiketimes_from_aedat(path, no_gaps=no_gaps, start_time=starttime, simtime=sim_time_per_sample, eventframe_width=eventframe_width)
         for neuron, times in enumerate(spike_times):
             all_sample_spikes[neuron] += times
         starttime += duration + pause_between_samples
@@ -186,10 +195,10 @@ def run_testset(sim, simtime, filepaths, labels, in_pop, out_pop, no_gaps):
     class_accuracies = np.array(correct_class_predictions) / np.array(nr_class_samples, dtype=float)
     print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
 
-def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops, no_gaps, pause_between_samples):
+def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops, no_gaps, pause_between_samples, eventframe_width):
     nr_samples = len(filepaths)
 
-    input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, in_pop.size, simtime)
+    input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(filepaths, no_gaps, pause_between_samples, in_pop.size, simtime, eventframe_width)
 
     in_pop.set(spike_times=input_spikes)
 
@@ -251,7 +260,7 @@ def run_testset_sequence(sim, simtime, filepaths, labels, in_pop, out_pop, pops,
     print("CLASS ACCURACIES N L C R: {} {} {} {}".format(class_accuracies[0], class_accuracies[1], class_accuracies[2], class_accuracies[3]))
 
 
-def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size, in_pop, out_pop, pops, no_gaps, pause_between_samples):
+def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size, in_pop, out_pop, pops, no_gaps, pause_between_samples, eventframe_width):
     tot_nr_samples = len(filepaths)
     nr_batches = int(math.ceil(len(filepaths) / float(batch_size)))
     batch_nr_samples = [batch_size for i in range(nr_batches-1)]
@@ -270,7 +279,7 @@ def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size,
             batch_paths = filepaths[i * batch_size:end_idx]
             batch_labels.append(labels[i * batch_size:end_idx])
 
-        input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(batch_paths, no_gaps, pause_between_samples, in_pop.size, simtime)
+        input_spikes, starttimes, tot_simtime, durations = generate_input_sample_spikes(batch_paths, no_gaps, pause_between_samples, in_pop.size, simtime, eventframe_width)
         batch_starttimes.append(starttimes)
 
         in_pop.set(spike_times=input_spikes)
@@ -288,7 +297,6 @@ def run_testset_sequence_in_batches(sim, simtime, filepaths, labels, batch_size,
     correct_class_predictions = [0, 0, 0, 0]
 
     for batch in range(nr_batches):
-
         start_index = [0, 0, 0, 0]
         for i in range(batch_nr_samples[batch]):
             output_spike_counts = [0, 0, 0, 0]
