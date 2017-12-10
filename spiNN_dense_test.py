@@ -8,11 +8,12 @@ import os
 
 
 
-SIMTIME = 1000
+SIMTIME = 250
 BATCH_SIZE = 30
 EVENTFRAME_WIDTH = None
-MEASUREMENTS = False
-INHIBITORY = False
+NO_GAP = True
+MEASUREMENTS = True
+INHIBITORY = True
 output_spikes = []
 
 if INHIBITORY:
@@ -24,13 +25,18 @@ p2 = path + '02Dense_4'
 
 
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
 #filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/one/')
+#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/small_8/')
 
 sim.setup(timestep=1.0)
 
 input_pop = sim.Population(size=1296, cellclass=sim.SpikeSourceArray(spike_times=[]), label="spikes")
+if MEASUREMENTS:
+    pop_0 = sim.Population(size=1296, cellclass=sim.IF_curr_exp(), label="1_pre_input")
+    pop_0.set(v_thresh=0.1)
+    input_proj = sim.Projection(input_pop, pop_0, sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=3, delay=1))
 pop_1 = sim.Population(size=16, cellclass=sim.IF_curr_exp(), label="1_input")
 if INHIBITORY:
     pop_1.set(v_thresh=0.05)
@@ -39,12 +45,6 @@ else:
 pop_2 = sim.Population(size=4, cellclass=sim.IF_curr_exp(), label="2_hidden")
 pop_2.set(v_thresh=0.1)
 
-# inhibitory_connections = Projection(pre, post,
-#                                     connector=sparse_connectivity,
-#                                     synapse_type=facilitating,
-#                                     receptor_type='inhibitory',
-#                                     space=space,
-#                                     label="inhibitory connections")
 
 if INHIBITORY:
     inhibitory_connections_1, exitatory_connections_1 = misc.read_connections(p1)
@@ -69,8 +69,10 @@ else:
     proj_2 = sim.Projection(pop_1, pop_2, connector_2)
 
 if MEASUREMENTS:
+    #pop_0.record(["spikes", "v"])
     pop_1.record(["spikes", "v"])
     pop_2.record(["spikes", "v"])
+    #pops = [pop_0, pop_1, pop_2]
     pops = [pop_1, pop_2]
 else:
     pop_2.record(["spikes"])
@@ -85,23 +87,23 @@ else:
 # CLASS ACCURACIES N L C R: 0.92 0.6 0.54 0.41
 # 2935.13000011 (batch 100)
 
-#
-# start = time.time()
-# misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, True, 100, 10)
-# end = time.time()
-# print(end - start)
+
+start = time.time()
+misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, NO_GAP, 100, 10)
+end = time.time()
+print(end - start)
 # 50.5559999943 seconds
 # Application started - waiting 439.985 seconds for it to stop (balanced_100)
 
-
-start = time.time()
-misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, True, 100, EVENTFRAME_WIDTH)
-end = time.time()
-print(end - start)
+#
+# start = time.time()
+# misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, NO_GAP, 100, EVENTFRAME_WIDTH)
+# end = time.time()
+# print(end - start)
 # NR. OF SAMPLES: 400
 # ACCURACY: 0.675
 # CLASS ACCURACIES N L C R: 0.93 0.66 0.62 0.49
-# 732.963000059 (batchsize=30, vpot measurement etc)
+# 639.134000063 (batchsize=30, simtime=1000)
 
 # NR. OF SAMPLES: 400
 # ACCURACY: 0.635

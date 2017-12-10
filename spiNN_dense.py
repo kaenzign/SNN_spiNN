@@ -6,10 +6,10 @@ import time
 import numpy as np
 import os
 
-INHIBITORY = False
-SIMTIME = 250
+INHIBITORY = True
+SIMTIME = 1000
 path = './model/dvs36_evtacc_D16_B0_FLAT_posW_10E/'
-#path = './model/dvs36_evtaccCOR_D16_B0_FLAT_30E/'
+path = './model/dvs36_evtaccCOR_D16_B0_FLAT_30E/'
 #path = './connections/'
 p1 = path + '01Dense_16'
 p2 = path + '02Dense_4'
@@ -37,7 +37,7 @@ cellparams = {'v_thresh': 1,
 filepath =  './data/aedat/' + 'rec_10_sample_535_C.aedat'
 #filepath =  './data/aedat/' + 'test_dvs_6.aedat'
 
-spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath, no_gaps=True, eventframe_width=10)
+spike_times, simtime = misc.extract_spiketimes_from_aedat(filepath, no_gaps=True, start_time=0, simtime=SIMTIME, eventframe_width=None)
 
 sim.setup(timestep=1.0)
 
@@ -55,6 +55,7 @@ pop_2.set(v_thresh=0.1)
 #misc.set_cell_params(pop_2, cellparams)
 #pop_2.set(i_offset=s[label]['v_thresh'])
 
+# this projection / pop_0 is only used to monitor the input spikes (actually not needed for MLP network)
 input_proj = sim.Projection(input_pop, pop_0, sim.OneToOneConnector(), synapse_type=sim.StaticSynapse(weight=3, delay=1))
 
 if INHIBITORY:
