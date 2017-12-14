@@ -1,3 +1,13 @@
+"""
+EVENT-BASED OBJECT RECOGNITION USING ANALOG AND SPIKING NEURAL NETWORKS
+Semesterproject
+
+plot_measurements.py
+Script used to plot the measured spiketrains and membrane potentials
+
+@author: Nicolas Kaenzig, D-ITET, ETH Zurich
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import neo

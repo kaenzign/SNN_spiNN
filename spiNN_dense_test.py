@@ -1,3 +1,15 @@
+"""
+EVENT-BASED OBJECT RECOGNITION USING ANALOG AND SPIKING NEURAL NETWORKS
+Semesterproject
+
+spiNN_MLP_test.py
+This module holds a pyNN implementation of a multilayer perceptron (MLP) spiking neurol network written usinng the
+spinnaker8 front-end interface to map the network to spiNNaker.
+
+@author: Nicolas Kaenzig, D-ITET, ETH Zurich
+"""
+
+
 import pyNN.spiNNaker as sim
 import pyNN.utility.plotting as plot
 import matplotlib.pyplot as plt
@@ -8,12 +20,12 @@ import os
 
 
 
-SIMTIME = 250
-BATCH_SIZE = 30
-EVENTFRAME_WIDTH = None
-NO_GAP = True
-MEASUREMENTS = True
-INHIBITORY = True
+SIMTIME = 250               # simulation timesteps per sample
+BATCH_SIZE = 30             # number of samples that are fed into spiNNaker at once
+EVENTFRAME_WIDTH = None     # combine EVENTFRAME_WIDTH events with consecutive timesteps into the same simultation step
+NO_GAP = True               # remove gaps/phases with no events in the DVS samples
+MEASUREMENTS = True         # measure spiketrains and membrane potentials
+INHIBITORY = True           # use the MLP model with inhibitory synapses (negaitve weights)
 output_spikes = []
 
 if INHIBITORY:
@@ -24,15 +36,12 @@ p1 = path + '01Dense_16'
 p2 = path + '02Dense_4'
 
 
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/test/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
-filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/three/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/one/')
-#filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/small_8/')
+filepaths, labels = misc.get_sample_filepaths_and_labels('./data/aedat/balanced_100/')
 
 sim.setup(timestep=1.0)
 
 input_pop = sim.Population(size=1296, cellclass=sim.SpikeSourceArray(spike_times=[]), label="spikes")
+# to measure input spiketrains introduce an additional population
 if MEASUREMENTS:
     pop_0 = sim.Population(size=1296, cellclass=sim.IF_curr_exp(), label="1_pre_input")
     pop_0.set(v_thresh=0.1)
@@ -77,59 +86,8 @@ if MEASUREMENTS:
 else:
     pop_2.record(["spikes"])
     pops = [pop_2]
-#
-# start = time.time()
+
+
 # misc.run_testset(sim, SIMTIME, filepaths, labels, input_pop, pop_2, True)
-# end = time.time()
-# print(end - start)
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.6175
-# CLASS ACCURACIES N L C R: 0.92 0.6 0.54 0.41
-# 2935.13000011 (batch 100)
-
-
-start = time.time()
 misc.run_testset_sequence(sim, SIMTIME, filepaths, labels, input_pop, pop_2, pops, NO_GAP, 100, 10)
-end = time.time()
-print(end - start)
-# 50.5559999943 seconds
-# Application started - waiting 439.985 seconds for it to stop (balanced_100)
-
-#
-# start = time.time()
 # misc.run_testset_sequence_in_batches(sim, SIMTIME, filepaths, labels, BATCH_SIZE, input_pop, pop_2, pops, NO_GAP, 100, EVENTFRAME_WIDTH)
-# end = time.time()
-# print(end - start)
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.675
-# CLASS ACCURACIES N L C R: 0.93 0.66 0.62 0.49
-# 639.134000063 (batchsize=30, simtime=1000)
-
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.635
-# CLASS ACCURACIES N L C R: 0.97 0.66 0.61 0.3
-# 747.660000086 (batchsize=100, only output spikes measured..)
-# 2017-11-22 15:34:33 WARNING: The reinjector on 0, 0 has detected that 6 packets were dumped from a core failing to take
-# the packet. This often occurs when the executable has crashed or has not been given a multicast packet callback. It can
-# also result from the core taking too long to process each packet. These packets were reinjected and so this number is
-# likely a overestimate.
-#
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.55
-# CLASS ACCURACIES N L C R: 0.93 0.59 0.54 0.28
-# 234.315000057 (batch 50, simtime 250)
-#
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.515
-# CLASS ACCURACIES N L C R: 0.93 0.59 0.54 nan
-# 213.197000027 (batch 100, simtime 250)
-
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.54
-# CLASS ACCURACIES N L C R: 0.99 0.43 0.46 0.28
-# 289.74000001 (batch 30, evtframe_width=10, simtime=250)
-#
-# NR. OF SAMPLES: 400
-# ACCURACY: 0.5525
-# CLASS ACCURACIES N L C R: 1.0 0.44 0.48 0.29
-# 687.986999989 (batch 30, evtframe_width=10, simtime=1000)
